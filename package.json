@@ -1,0 +1,23 @@
+{
+  "name": "agent-task-platform",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "test": "node --experimental-vm-modules ./node_modules/jest-cli/bin/jest.js --config jest.config.js",
+    "test:watch": "node --experimental-vm-modules ./node_modules/jest-cli/bin/jest.js --config jest.config.js --watch",
+    "test:coverage": "node --experimental-vm-modules ./node_modules/jest-cli/bin/jest.js --config jest.config.js --coverage"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.7.0",
+    "express": "^5.1.0",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "jest": "^30.4.2",
+    "supertest": "^7.2.2",
+    "vitest": "^3.1.0"
+  }
+}

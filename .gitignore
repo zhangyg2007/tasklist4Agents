@@ -1,0 +1,26 @@
+# Claude Code
+.claude/
+
+# Dependencies
+node_modules/
+
+# Database files
+data/
+*.db
+
+# Coverage
+coverage/
+
+# Environment
+.env
+.env.*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
