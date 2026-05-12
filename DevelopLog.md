@@ -1,5 +1,46 @@
 # DevelopLog
 
+## v1.1 — 2026-05-12 — Dashboard UI + 告警系统设计
+
+### 新功能
+
+#### Web Dashboard (`src/public/dashboard.html`)
+- 自包含 HTML 页面，无需构建，直接通过 Express 静态文件服务
+- 根路径 `/` 自动重定向到 `/dashboard.html`
+- **任务树视图**：树形层级展示所有任务，父任务显示完成进度条 X/N
+- **颜色状态标签**：open(灰) / assigned(蓝) / in_progress(黄) / done(绿) / rejected(红)
+- **Agent 注册表单**：支持 username、role、source、capabilities、callback_url
+- **任务创建表单**：支持 parent_id 和逗号分隔内联子任务
+- **Token 管理**：输入框 + localStorage 持久化，自动验证当前用户身份
+- **Agent 指派**：每个任务行有指派按钮，弹窗选择已注册 Agent
+- **Agent 列表**：显示所有已注册 Agent 及其能力
+- **自动刷新**：每 5 秒轮询，可选关闭
+
+#### 测试完善
+- 控制器层单元测试补齐：authController (7)、taskController (23)、agentController (25)
+- Webhook 控制器测试 (9)：覆盖 sendCallback、getCallbackStatus、retryFailedCallbacks
+- 数据库测试 (2)：覆盖 initDb 默认路径分支
+- Supertest 集成测试 (25)：完整 CRUD、Agent 协作流程、Auth、错误边界
+- **最终覆盖率：100%** (Statements / Branches / Functions / Lines)
+- 总计 209 个测试，11 个套件
+
+#### 文档
+- `README.md`：完整 API 文档 + 快速开始指南
+- `.gitignore`：排除 node_modules/、data/、coverage/、.claude/
+- `docs/superpowers/specs/2026-05-12-dashboard-ui-enhancement-design.md`：UI 增强设计文档
+
+### 未来功能设计（已记录设计文档）
+- **任务看板（表格视图）**：主任务统计列表，含进度条和告警计数
+- **告警系统**：独立 `alerts` 表 + `error`/`aborted` 任务状态 + 独立告警面板 + Dashboard badge
+- **自动派单**：Capability 匹配 + 默认同 Agent 修复 + 主 Agent 协调特例
+- **三层 Tab 布局**：任务看板 / 树形视图 / 告警中心
+
+### 技术变更
+- 根路由 `/` 从 JSON API 信息改为重定向到 `/dashboard.html`
+- `src/app.js` 增加 `express.static` 中间件服务 `src/public/` 目录
+- 清理旧 vitest 文件（`tests/smoke.test.js` 等 6 个文件）
+- 删除废弃的 `tests/setup.js`（vitest 遗留工具函数）
+
 ## v1.0 — 2026-05-09 — Multi-Agent Task Platform 初始版本
 
 ### 项目概述
