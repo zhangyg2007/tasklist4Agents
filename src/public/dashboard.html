@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Task Platform — Dashboard</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --card: #1a1d27;
+    --border: #2a2d3a;
+    --text: #e1e4ea;
+    --muted: #6b7080;
+    --accent: #4f8fff;
+    --green: #22c55e;
+    --red: #ef4444;
+    --yellow: #f59e0b;
+    --blue: #3b82f6;
+    --gray: #6b7280;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+
+  /* Header */
+  header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+  h1 { font-size: 1.4rem; font-weight: 600; }
+  .refresh-badge { font-size: 0.75rem; color: var(--muted); }
+
+  /* Token bar */
+  .token-bar { display: flex; gap: 8px; margin-bottom: 20px; }
+  .token-bar input { flex: 1; padding: 8px 12px; background: var(--card); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: monospace; font-size: 0.85rem; }
+  .token-bar input:focus { outline: none; border-color: var(--accent); }
+
+  /* Cards */
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+  .card h2 { font-size: 1rem; margin-bottom: 12px; color: var(--text); }
+
+  /* Grid */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
+
+  /* Forms */
+  .form-row { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .form-row input, .form-row select { padding: 7px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 5px; color: var(--text); font-size: 0.85rem; }
+  .form-row input:focus, .form-row select:focus { outline: none; border-color: var(--accent); }
+  .form-row input { flex: 1; min-width: 120px; }
+
+  /* Buttons */
+  .btn { padding: 7px 16px; border: none; border-radius: 5px; font-size: 0.85rem; cursor: pointer; font-weight: 500; transition: opacity 0.15s; }
+  .btn:hover { opacity: 0.85; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-success { background: var(--green); color: #fff; }
+  .btn-sm { padding: 4px 10px; font-size: 0.75rem; }
+
+  /* Status badges */
+  .status { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  .status-open { background: #374151; color: #9ca3af; }
+  .status-assigned { background: #1e3a5f; color: #60a5fa; }
+  .status-in_progress { background: #3b2f0a; color: #fbbf24; }
+  .status-done { background: #14532d; color: #4ade80; }
+  .status-rejected { background: #450a0a; color: #f87171; }
+
+  /* Task tree */
+  .task-list { list-style: none; }
+  .task-item { border-left: 2px solid var(--border); margin-left: 20px; padding: 8px 0 8px 16px; position: relative; }
+  .task-item.root { border-left: none; margin-left: 0; padding-left: 0; }
+  .task-item::before { content: ''; position: absolute; left: -2px; top: 0; width: 2px; height: 16px; background: var(--border); }
+  .task-item.root::before { display: none; }
+  .task-row { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--bg); border-radius: 6px; flex-wrap: wrap; }
+  .task-row:hover { background: #1e2130; }
+  .task-title { font-weight: 500; font-size: 0.9rem; }
+  .task-meta { font-size: 0.75rem; color: var(--muted); margin-left: auto; white-space: nowrap; }
+  .task-actions { display: flex; gap: 4px; }
+
+  /* Progress bar */
+  .progress-wrap { display: flex; align-items: center; gap: 6px; min-width: 80px; }
+  .progress-bar { flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--green); border-radius: 2px; transition: width 0.3s; }
+  .progress-text { font-size: 0.7rem; color: var(--muted); min-width: 28px; }
+
+  /* Modal */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; justify-content: center; align-items: center; }
+  .modal-overlay.active { display: flex; }
+  .modal { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 24px; min-width: 360px; max-width: 90vw; }
+  .modal h3 { margin-bottom: 12px; }
+  .modal .btn { margin-top: 12px; margin-right: 8px; }
+
+  /* Empty state */
+  .empty { text-align: center; color: var(--muted); padding: 40px; }
+  .empty p { margin: 4px 0; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <div>
+    <h1>&#9883; Agent Task Platform</h1>
+    <span class="refresh-badge" id="refreshInfo">auto-refresh: 5s</span>
+  </div>
+  <div style="display:flex;gap:8px">
+    <button class="btn btn-primary" onclick="refreshAll()">&#8635; Refresh Now</button>
+    <label style="display:flex;align-items:center;gap:4px;font-size:0.8rem;color:var(--muted)">
+      <input type="checkbox" id="autoRefresh" checked onchange="toggleAuto()"> Auto
+    </label>
+  </div>
+</header>
+
+<!-- Token -->
+<div class="token-bar">
+  <input type="text" id="tokenInput" placeholder="Bearer Token (saved in localStorage)" onchange="saveToken()">
+  <select id="tokenRole" style="padding:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.8rem" disabled>
+    <option>---</option>
+  </select>
+</div>
+
+<div class="grid-2">
+  <!-- Register -->
+  <div class="card">
+    <h2>&#10133; Register Agent</h2>
+    <div class="form-row">
+      <input id="regUser" placeholder="Username">
+      <select id="regRole"><option value="agent">Agent</option><option value="human">Human</option></select>
+    </div>
+    <div class="form-row">
+      <input id="regSource" placeholder="Source (openclaw / hermes)">
+      <input id="regCaps" placeholder="Capabilities (code-gen, review)">
+    </div>
+    <div class="form-row">
+      <input id="regCallback" placeholder="Callback URL (optional)">
+    </div>
+    <button class="btn btn-primary" onclick="registerAgent()">Register</button>
+    <small id="regResult" style="color:var(--green);display:none;margin-left:8px;"></small>
+  </div>
+
+  <!-- Create Task -->
+  <div class="card">
+    <h2>&#128196; Create Task</h2>
+    <div class="form-row">
+      <input id="taskTitle" placeholder="Task title">
+      <input id="taskParent" placeholder="Parent ID (optional)" type="number" style="max-width:110px">
+    </div>
+    <div class="form-row">
+      <input id="sub1" placeholder="Subtasks (comma-separated)">
+    </div>
+    <button class="btn btn-success" onclick="createTask()">Create Task</button>
+    <small id="taskResult" style="color:var(--green);display:none;margin-left:8px;"></small>
+  </div>
+</div>
+
+<!-- Task Tree -->
+<div class="card">
+  <h2>&#128202; Task Tree</h2>
+  <div id="taskTree"><div class="empty"><p>No tasks yet.</p><p>Register an agent first, then create a task.</p></div></div>
+</div>
+
+<!-- Agents -->
+<div class="card">
+  <h2>&#129302; Registered Agents</h2>
+  <div id="agentList"><div class="empty">No agents found.</div></div>
+</div>
+
+</div>
+
+<!-- Assign Modal -->
+<div class="modal-overlay" id="assignModal">
+  <div class="modal">
+    <h3>Assign Task #<span id="assignTaskId"></span></h3>
+    <p style="font-size:0.85rem;color:var(--muted);margin-bottom:8px" id="assignTaskTitle"></p>
+    <select id="assignAgentSelect" style="width:100%;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:0.85rem"></select>
+    <button class="btn btn-primary" onclick="doAssign()">Assign</button>
+    <button class="btn" style="background:var(--border);color:var(--text)" onclick="closeModal('assignModal')">Cancel</button>
+  </div>
+</div>
+
+<script>
+const API = '';
+let pollTimer = null;
+
+// --- Token ---
+function getToken() { return document.getElementById('tokenInput').value || localStorage.getItem('api_token') || ''; }
+function saveToken() {
+  const t = document.getElementById('tokenInput').value.trim();
+  localStorage.setItem('api_token', t);
+  if (t) fetchMe();
+}
+function loadToken() {
+  const t = localStorage.getItem('api_token') || '';
+  document.getElementById('tokenInput').value = t;
+}
+loadToken();
+
+// --- Auto refresh ---
+function toggleAuto() {
+  if (document.getElementById('autoRefresh').checked) startPoll();
+  else stopPoll();
+}
+function startPoll() { stopPoll(); pollTimer = setInterval(refreshAll, 5000); }
+function stopPoll() { if (pollTimer) clearInterval(pollTimer); }
+
+// --- API helpers ---
+async function api(method, path, body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  const t = getToken();
+  if (t) opts.headers['Authorization'] = 'Bearer ' + t;
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(API + path, opts);
+  const data = await r.json().catch(() => ({}));
+  return { status: r.status, data };
+}
+
+// --- Me ---
+async function fetchMe() {
+  const { status, data } = await api('GET', '/api/auth/me');
+  const el = document.getElementById('tokenRole');
+  if (status === 200) { el.value = data.role; el.style.color = 'var(--green)'; }
+  else { el.value = 'invalid'; el.style.color = 'var(--red)'; }
+}
+
+// --- Register ---
+async function registerAgent() {
+  const u = document.getElementById('regUser').value.trim();
+  const role = document.getElementById('regRole').value;
+  const source = document.getElementById('regSource').value.trim();
+  const caps = document.getElementById('regCaps').value.trim();
+  const cb = document.getElementById('regCallback').value.trim();
+  if (!u) return alert('Username required');
+
+  const body = { username: u, role };
+  if (source) body.source = source;
+  if (caps) body.capabilities = caps.split(',').map(s => s.trim()).filter(Boolean);
+  if (cb) body.callback_url = cb;
+
+  const { status, data } = await api('POST', '/api/auth/register', body);
+  const el = document.getElementById('regResult');
+  el.style.display = 'inline';
+  if (status === 201) {
+    el.style.color = 'var(--green)';
+    el.textContent = 'Token: ' + data.token;
+    document.getElementById('tokenInput').value = data.token;
+    saveToken();
+    refreshAll();
+  } else {
+    el.style.color = 'var(--red)';
+    el.textContent = data.error || 'Failed';
+  }
+}
+
+// --- Create Task ---
+async function createTask() {
+  const title = document.getElementById('taskTitle').value.trim();
+  if (!title) return alert('Title required');
+  const parentId = document.getElementById('taskParent').value.trim();
+  const subsRaw = document.getElementById('sub1').value.trim();
+
+  const body = { title };
+  if (parentId) body.parent_id = Number(parentId);
+  if (subsRaw) body.subtasks = subsRaw.split(',').map(s => ({ title: s.trim() })).filter(s => s.title);
+
+  const { status, data } = await api('POST', '/api/tasks', body);
+  const el = document.getElementById('taskResult');
+  el.style.display = 'inline';
+  if (status === 201) {
+    el.style.color = 'var(--green)';
+    el.textContent = `Created #${data.id}` + (data.subtask_ids?.length ? ` + ${data.subtask_ids.length} subtasks` : '');
+    document.getElementById('taskTitle').value = '';
+    document.getElementById('taskParent').value = '';
+    document.getElementById('sub1').value = '';
+    refreshAll();
+  } else {
+    el.style.color = 'var(--red)';
+    el.textContent = data.error || 'Failed';
+  }
+}
+
+// --- Render ---
+async function refreshAll() {
+  document.getElementById('refreshInfo').textContent = 'refreshing...';
+  await Promise.all([loadTasks(), loadAgents()]);
+  document.getElementById('refreshInfo').textContent = 'auto-refresh: 5s | last: ' + new Date().toLocaleTimeString();
+}
+
+async function loadTasks() {
+  const { status, data } = await api('GET', '/api/tasks?sort=id&order=asc');
+  if (status !== 200) { document.getElementById('taskTree').innerHTML = '<div class="empty">Auth required — set token above</div>'; return; }
+  const tasks = data.tasks || [];
+  if (!tasks.length) { document.getElementById('taskTree').innerHTML = '<div class="empty"><p>No tasks yet.</p><p>Create one using the form above.</p></div>'; return; }
+
+  // Build tree
+  const childrenMap = {};
+  const roots = [];
+  for (const t of tasks) {
+    if (t.parent_id) { (childrenMap[t.parent_id] ||= []).push(t); }
+    else { roots.push(t); }
+  }
+
+  let html = '<ul class="task-list">';
+  function render(t, depth) {
+    const cls = depth === 0 ? 'task-item root' : 'task-item';
+    const kids = childrenMap[t.id] || [];
+    const doneCount = kids.filter(k => k.status === 'done').length;
+    const hasKids = kids.length > 0;
+
+    html += `<li class="${cls}">
+      <div class="task-row">
+        <span class="task-title">${esc(t.title)}</span>
+        <span class="status status-${t.status}">${t.status}</span>
+        ${t.assigned_to ? `<span style="font-size:0.7rem;color:var(--muted)">agent #${t.assigned_to}</span>` : ''}
+        ${hasKids ? `
+          <span class="progress-wrap">
+            <span class="progress-bar"><span class="progress-fill" style="width:${kids.length ? (doneCount/kids.length*100) : 0}%"></span></span>
+            <span class="progress-text">${doneCount}/${kids.length}</span>
+          </span>` : ''}
+        <span class="task-meta">#${t.id}</span>
+        <span class="task-actions">
+          <button class="btn btn-sm btn-primary" onclick="openAssign(${t.id}, '${esc(t.title)}')" title="Assign">&#10148;</button>
+        </span>
+      </div>`;
+    for (const kid of kids) render(kid, depth + 1);
+    html += '</li>';
+  }
+  for (const r of roots) render(r, 0);
+  html += '</ul>';
+  document.getElementById('taskTree').innerHTML = html;
+}
+
+async function loadAgents() {
+  const { status, data } = await api('GET', '/api/agents');
+  if (status !== 200) return;
+  const agents = data.agents || [];
+  if (!agents.length) { document.getElementById('agentList').innerHTML = '<div class="empty">No agents registered.</div>'; return; }
+
+  let html = '';
+  for (const a of agents) {
+    html += `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:0.85rem;flex-wrap:wrap">
+      <strong>${esc(a.username)}</strong>
+      <span class="status status-${a.role === 'agent' ? 'in_progress' : 'open'}">${a.role}</span>
+      <span style="color:var(--muted);font-size:0.75rem">source: ${a.source || '-'}</span>
+      <span style="color:var(--muted);font-size:0.75rem">caps: ${(a.capabilities || []).join(', ') || '-'}</span>
+      <span style="color:var(--muted);font-size:0.75rem;margin-left:auto">#${a.id}</span>
+    </div>`;
+  }
+  document.getElementById('agentList').innerHTML = html;
+}
+
+// --- Assign ---
+async function openAssign(taskId, title) {
+  document.getElementById('assignTaskId').textContent = taskId;
+  document.getElementById('assignTaskTitle').textContent = title;
+  // Populate agent dropdown
+  const { data } = await api('GET', '/api/agents');
+  const sel = document.getElementById('assignAgentSelect');
+  sel.innerHTML = '';
+  for (const a of (data.agents || [])) {
+    const opt = document.createElement('option');
+    opt.value = a.id;
+    opt.textContent = `${a.username} (${a.role}) #${a.id}`;
+    sel.appendChild(opt);
+  }
+  document.getElementById('assignModal').classList.add('active');
+}
+async function doAssign() {
+  const taskId = document.getElementById('assignTaskId').textContent;
+  const agentId = Number(document.getElementById('assignAgentSelect').value);
+  if (!agentId) return;
+  await api('POST', `/api/tasks/${taskId}/assign`, { assigned_to: agentId });
+  closeModal('assignModal');
+  refreshAll();
+}
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// Init
+startPoll();
+refreshAll();
+</script>
+</body>
+</html>
