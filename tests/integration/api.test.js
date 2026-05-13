@@ -360,4 +360,158 @@ describe('API Integration', () => {
       expect(res.status).toBe(400);
     });
   });
+
+  // ==================== Alert API ====================
+
+  describe('Alert API', () => {
+    let taskId;
+
+    beforeEach(() => {
+      const r = db.prepare("INSERT INTO tasks (title, user_id) VALUES (?, ?)").run('Alertable', humanId);
+      taskId = r.lastInsertRowid;
+    });
+
+    // --- Error Reporting ---
+
+    it('POST /api/alerts/tasks/:id/error — reports error and creates alert', async () => {
+      // Assign task to agent first
+      db.prepare("UPDATE tasks SET status = 'in_progress', assigned_to = ? WHERE id = ?").run(agentId, taskId);
+
+      const res = await request(app)
+        .post(`/api/alerts/tasks/${taskId}/error`)
+        .set(auth(agentToken))
+        .send({ error_type: 'RUNTIME_ERROR', error_message: 'Something broke' });
+
+      expect(res.status).toBe(201);
+      expect(res.body.task_id).toBe(taskId);
+      expect(res.body.status).toBe('error');
+      expect(res.body.alert_id).toBeGreaterThan(0);
+
+      // Verify task status updated
+      const task = db.prepare('SELECT status FROM tasks WHERE id = ?').get(taskId);
+      expect(task.status).toBe('error');
+    });
+
+    it('POST /api/alerts/tasks/:id/error — returns 404 for non-existent task', async () => {
+      const res = await request(app)
+        .post('/api/alerts/tasks/99999/error')
+        .set(auth(agentToken))
+        .send({ error_type: 'RUNTIME_ERROR' });
+
+      expect(res.status).toBe(404);
+    });
+
+    it('POST /api/alerts/tasks/:id/error — returns 403 when agent not assigned', async () => {
+      const res = await request(app)
+        .post(`/api/alerts/tasks/${taskId}/error`)
+        .set(auth(agentToken))
+        .send({ error_type: 'RUNTIME_ERROR' });
+
+      expect(res.status).toBe(403);
+      expect(res.body.error).toContain('not assigned');
+    });
+
+    it('POST /api/alerts/tasks/:id/error — auto-creates fix subtask', async () => {
+      db.prepare("UPDATE tasks SET status = 'in_progress', assigned_to = ? WHERE id = ?").run(agentId, taskId);
+
+      const res = await request(app)
+        .post(`/api/alerts/tasks/${taskId}/error`)
+        .set(auth(agentToken))
+        .send({
+          error_type: 'RUNTIME_ERROR',
+          error_message: 'Process crashed',
+          auto_create_fix: true
+        });
+
+      expect(res.status).toBe(201);
+      expect(res.body.fix_task_id).toBeGreaterThan(0);
+
+      // Verify fix task created and assigned to same agent
+      const fix = db.prepare('SELECT * FROM tasks WHERE id = ?').get(res.body.fix_task_id);
+      expect(fix).toBeDefined();
+      expect(fix.parent_id).toBe(taskId);
+      expect(fix.assigned_to).toBe(agentId);
+      expect(fix.title).toContain('[Fix]');
+    });
+
+    // --- List Alerts ---
+
+    it('GET /api/alerts — lists alerts with filters', async () => {
+      // Create an alert
+      db.prepare("UPDATE tasks SET status = 'in_progress', assigned_to = ? WHERE id = ?").run(agentId, taskId);
+      db.prepare(
+        "INSERT INTO alerts (task_id, agent_id, error_type, error_message, severity, status) VALUES (?,?,?,?,?,?)"
+      ).run(taskId, agentId, 'TIMEOUT', 'Request timed out', 'error', 'open');
+
+      const res = await request(app)
+        .get('/api/alerts')
+        .set(auth(humanToken));
+
+      expect(res.status).toBe(200);
+      expect(res.body.alerts.length).toBe(1);
+      expect(res.body.total).toBe(1);
+      expect(res.body.alerts[0].error_type).toBe('TIMEOUT');
+      expect(res.body.alerts[0].task_title).toBeDefined();
+      expect(res.body.alerts[0].agent_name).toBeDefined();
+    });
+
+    it('GET /api/alerts — filters by status', async () => {
+      db.prepare("UPDATE tasks SET status = 'in_progress', assigned_to = ? WHERE id = ?").run(agentId, taskId);
+      db.prepare(
+        "INSERT INTO alerts (task_id, agent_id, error_type, severity, status) VALUES (?,?,?,?,?)"
+      ).run(taskId, agentId, 'TIMEOUT', 'error', 'open');
+      db.prepare(
+        "INSERT INTO alerts (task_id, agent_id, error_type, severity, status) VALUES (?,?,?,?,?)"
+      ).run(taskId, agentId, 'OOM', 'critical', 'resolved');
+
+      const res = await request(app)
+        .get('/api/alerts?status=open')
+        .set(auth(humanToken));
+
+      expect(res.status).toBe(200);
+      expect(res.body.alerts.length).toBe(1);
+      expect(res.body.alerts[0].error_type).toBe('TIMEOUT');
+    });
+
+    // --- Get Single Alert ---
+
+    it('GET /api/alerts/:id — returns single alert', async () => {
+      db.prepare("UPDATE tasks SET status = 'in_progress', assigned_to = ? WHERE id = ?").run(agentId, taskId);
+      const alertId = db.prepare(
+        "INSERT INTO alerts (task_id, agent_id, error_type, error_message, severity) VALUES (?,?,?,?,?)"
+      ).run(taskId, agentId, 'RUNTIME_ERROR', 'Null pointer', 'critical').lastInsertRowid;
+
+      const res = await request(app)
+        .get(`/api/alerts/${alertId}`)
+        .set(auth(humanToken));
+
+      expect(res.status).toBe(200);
+      expect(res.body.error_type).toBe('RUNTIME_ERROR');
+      expect(res.body.error_message).toBe('Null pointer');
+      expect(res.body.severity).toBe('critical');
+      expect(res.body.task_title).toBe('Alertable');
+      expect(res.body.agent_name).toBe('agent');
+    });
+
+    // --- Update Alert ---
+
+    it('PATCH /api/alerts/:id — updates alert status', async () => {
+      db.prepare("UPDATE tasks SET status = 'in_progress', assigned_to = ? WHERE id = ?").run(agentId, taskId);
+      const alertId = db.prepare(
+        "INSERT INTO alerts (task_id, agent_id, error_type, severity) VALUES (?,?,?,?)"
+      ).run(taskId, agentId, 'TIMEOUT', 'warn').lastInsertRowid;
+
+      const res = await request(app)
+        .patch(`/api/alerts/${alertId}`)
+        .set(auth(humanToken))
+        .send({ status: 'acknowledged' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe('acknowledged');
+
+      // Verify persisted
+      const alert = db.prepare('SELECT status FROM alerts WHERE id = ?').get(alertId);
+      expect(alert.status).toBe('acknowledged');
+    });
+  });
 });
