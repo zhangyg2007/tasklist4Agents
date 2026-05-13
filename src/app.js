@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import { authRoutes } from './routes/auth.js';
 import { taskRoutes } from './routes/tasks.js';
 import { agentRoutes } from './routes/agents.js';
+import { alertRoutes } from './routes/alerts.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -35,6 +36,7 @@ export function createApp(db) {
   app.use('/api/auth', authRoutes);
   app.use('/api/tasks', taskRoutes);
   app.use('/api/agents', agentRoutes);
+app.use('/api/alerts', alertRoutes);
 
   // Error handler (must be last)
   app.use(errorHandler);
