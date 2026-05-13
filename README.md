@@ -1,4 +1,4 @@
-# Agent Task Platform
+# tasklist4Agents
 
 Multi-Agent 任务编排平台 — Agent 注册、任务树拆分、子任务指派、结果提交与验收的完整 API 服务。
 
@@ -205,17 +205,16 @@ tests/
 ## 测试
 
 ```bash
-npm test              # 209 个测试，11 个套件
-npm run test:coverage # 100% 覆盖率（Statements, Branches, Functions, Lines）
+npm test              # 252 个测试，13 个套件
 ```
 
 | 层 | 套件 | 测试数 |
 |---|------|--------|
-| 模型 | User.test.js, Task.test.js | 91 |
+| 模型 | User.test.js, Task.test.js, Alert.test.js | 107 |
 | 中间件 | auth.test.js, validate.test.js, errorHandler.test.js | 27 |
-| 控制器 | authController, taskController, agentController, webhook | 64 |
+| 控制器 | authController, taskController, agentController, alertController, webhook | 75 |
 | 数据库 | db.test.js | 2 |
-| 集成 | api.test.js | 25 |
+| 集成 | api.test.js | 33 |
 
 ## 许可证
 
