@@ -17,20 +17,44 @@
     --yellow: #f59e0b;
     --blue: #3b82f6;
     --gray: #6b7280;
+    --orange: #f97316;
+    --purple: #a855f7;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
-  .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 16px 20px; }
 
   /* Header */
-  header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
-  h1 { font-size: 1.4rem; font-weight: 600; }
-  .refresh-badge { font-size: 0.75rem; color: var(--muted); }
+  header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
+  h1 { font-size: 1.3rem; font-weight: 600; white-space: nowrap; }
+  .header-right { display: flex; align-items: center; gap: 8px; }
+  .refresh-badge { font-size: 0.7rem; color: var(--muted); }
+
+  /* Notification badge */
+  .badge { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; font-size: 0.7rem; font-weight: 700; background: var(--red); color: #fff; }
+  .badge.hidden { display: none; }
+  .badge.pulse { animation: pulse 0.5s ease-in-out; }
+  @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.3); } }
+
+  /* Toast */
+  .toast { position: fixed; top: 20px; right: 20px; background: var(--card); border: 1px solid var(--red); border-radius: 8px; padding: 12px 20px; z-index: 200; font-size: 0.85rem; opacity: 0; transform: translateX(100%); transition: all 0.3s; pointer-events: none; }
+  .toast.show { opacity: 1; transform: translateX(0); }
 
   /* Token bar */
-  .token-bar { display: flex; gap: 8px; margin-bottom: 20px; }
-  .token-bar input { flex: 1; padding: 8px 12px; background: var(--card); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: monospace; font-size: 0.85rem; }
+  .token-bar { display: flex; gap: 8px; margin-bottom: 12px; }
+  .token-bar input { flex: 1; padding: 6px 10px; background: var(--card); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: monospace; font-size: 0.8rem; }
   .token-bar input:focus { outline: none; border-color: var(--accent); }
+
+  /* Tabs */
+  .tab-bar { display: flex; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 16px; }
+  .tab-btn { padding: 8px 20px; background: none; border: none; color: var(--muted); font-size: 0.85rem; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.15s; position: relative; }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-badge { position: absolute; top: 2px; right: 4px; }
+
+  /* Tab content */
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
 
   /* Cards */
   .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
@@ -51,7 +75,9 @@
   .btn:hover { opacity: 0.85; }
   .btn-primary { background: var(--accent); color: #fff; }
   .btn-success { background: var(--green); color: #fff; }
+  .btn-danger { background: var(--red); color: #fff; }
   .btn-sm { padding: 4px 10px; font-size: 0.75rem; }
+  .btn-xs { padding: 2px 8px; font-size: 0.7rem; }
 
   /* Status badges */
   .status { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -60,18 +86,30 @@
   .status-in_progress { background: #3b2f0a; color: #fbbf24; }
   .status-done { background: #14532d; color: #4ade80; }
   .status-rejected { background: #450a0a; color: #f87171; }
+  .status-error { background: #431407; color: #fb923c; }
+  .status-aborted { background: #2d1b69; color: #c084fc; }
+  .status-blocked { background: #1e293b; color: #94a3b8; }
 
   /* Task tree */
   .task-list { list-style: none; }
-  .task-item { border-left: 2px solid var(--border); margin-left: 20px; padding: 8px 0 8px 16px; position: relative; }
+  .task-item { border-left: 2px solid var(--border); margin-left: 20px; padding: 4px 0 4px 16px; position: relative; }
   .task-item.root { border-left: none; margin-left: 0; padding-left: 0; }
-  .task-item::before { content: ''; position: absolute; left: -2px; top: 0; width: 2px; height: 16px; background: var(--border); }
+  .task-item.collapsed > .task-list { display: none; }
+  .task-item::before { content: ''; position: absolute; left: -2px; top: 0; width: 2px; height: 14px; background: var(--border); }
   .task-item.root::before { display: none; }
-  .task-row { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--bg); border-radius: 6px; flex-wrap: wrap; }
+  .task-row { display: flex; align-items: center; gap: 8px; padding: 5px 8px; background: var(--bg); border-radius: 6px; flex-wrap: wrap; }
   .task-row:hover { background: #1e2130; }
   .task-title { font-weight: 500; font-size: 0.9rem; }
   .task-meta { font-size: 0.75rem; color: var(--muted); margin-left: auto; white-space: nowrap; }
   .task-actions { display: flex; gap: 4px; }
+
+  /* Expand/collapse toggle */
+  .toggle-icon { cursor: pointer; font-size: 0.7rem; color: var(--muted); width: 16px; text-align: center; user-select: none; flex-shrink: 0; transition: transform 0.15s; }
+  .toggle-icon.collapsed { transform: rotate(-90deg); }
+
+  /* Alert icon on task */
+  .alert-indicator { color: var(--red); font-size: 0.7rem; cursor: pointer; }
+  .alert-indicator.none { color: transparent; }
 
   /* Progress bar */
   .progress-wrap { display: flex; align-items: center; gap: 6px; min-width: 80px; }
@@ -79,89 +117,169 @@
   .progress-fill { height: 100%; background: var(--green); border-radius: 2px; transition: width 0.3s; }
   .progress-text { font-size: 0.7rem; color: var(--muted); min-width: 28px; }
 
+  /* Task Board table */
+  .board-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  .board-table th { text-align: left; padding: 8px 10px; border-bottom: 2px solid var(--border); color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; }
+  .board-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  .board-table tr:hover td { background: #1e2130; }
+  .board-table .clickable { cursor: pointer; color: var(--accent); }
+  .board-table .clickable:hover { text-decoration: underline; }
+
+  /* Alert Center */
+  .alert-filters { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  .alert-card { background: var(--bg); border: 1px solid var(--border); border-left: 3px solid var(--red); border-radius: 6px; padding: 12px; margin-bottom: 8px; }
+  .alert-card.warn { border-left-color: var(--yellow); }
+  .alert-card.error { border-left-color: var(--red); }
+  .alert-card.critical { border-left-color: var(--purple); }
+  .alert-card.resolved { opacity: 0.5; border-left-color: var(--green); }
+  .alert-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; flex-wrap: wrap; }
+  .alert-title { font-weight: 600; font-size: 0.9rem; }
+  .alert-meta { font-size: 0.75rem; color: var(--muted); }
+  .alert-actions { display: flex; gap: 6px; margin-top: 8px; }
+
+  /* Context menu */
+  .ctx-menu { display: none; position: fixed; z-index: 150; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 4px 0; min-width: 180px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+  .ctx-menu.active { display: block; }
+  .ctx-menu-item { padding: 8px 16px; font-size: 0.8rem; cursor: pointer; color: var(--text); display: block; width: 100%; text-align: left; background: none; border: none; }
+  .ctx-menu-item:hover { background: #2a2d3a; }
+  .ctx-menu-divider { height: 1px; background: var(--border); margin: 4px 0; }
+
   /* Modal */
   .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; justify-content: center; align-items: center; }
   .modal-overlay.active { display: flex; }
-  .modal { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 24px; min-width: 360px; max-width: 90vw; }
+  .modal { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 24px; min-width: 360px; max-width: 90vw; max-height: 80vh; overflow-y: auto; }
   .modal h3 { margin-bottom: 12px; }
   .modal .btn { margin-top: 12px; margin-right: 8px; }
 
   /* Empty state */
   .empty { text-align: center; color: var(--muted); padding: 40px; }
   .empty p { margin: 4px 0; }
+
+  /* Filter pills */
+  .pill { padding: 3px 12px; border-radius: 14px; border: 1px solid var(--border); background: none; color: var(--muted); font-size: 0.75rem; cursor: pointer; }
+  .pill.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .pill:hover { border-color: var(--muted); }
+  .pill.active:hover { border-color: var(--accent); }
 </style>
 </head>
 <body>
 <div class="container">
 
 <header>
-  <div>
-    <h1>&#9883; Agent Task Platform</h1>
-    <span class="refresh-badge" id="refreshInfo">auto-refresh: 5s</span>
-  </div>
-  <div style="display:flex;gap:8px">
-    <button class="btn btn-primary" onclick="refreshAll()">&#8635; Refresh Now</button>
-    <label style="display:flex;align-items:center;gap:4px;font-size:0.8rem;color:var(--muted)">
+  <h1>&#9883; Agent Task Platform</h1>
+  <div class="header-right">
+    <span class="badge hidden" id="alertCountBadge" title="Open alerts" onclick="switchTab('alerts')">0</span>
+    <button class="btn btn-primary btn-sm" onclick="refreshAll()">&#8635; Refresh</button>
+    <label style="display:flex;align-items:center;gap:4px;font-size:0.75rem;color:var(--muted)">
       <input type="checkbox" id="autoRefresh" checked onchange="toggleAuto()"> Auto
     </label>
   </div>
 </header>
 
+<span class="refresh-badge" id="refreshInfo">auto-refresh: 5s</span>
+
 <!-- Token -->
 <div class="token-bar">
   <input type="text" id="tokenInput" placeholder="Bearer Token (saved in localStorage)" onchange="saveToken()">
-  <select id="tokenRole" style="padding:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.8rem" disabled>
+  <select id="tokenRole" style="padding:6px 8px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.75rem" disabled>
     <option>---</option>
   </select>
 </div>
 
-<div class="grid-2">
-  <!-- Register -->
-  <div class="card">
-    <h2>&#10133; Register Agent</h2>
-    <div class="form-row">
-      <input id="regUser" placeholder="Username">
-      <select id="regRole"><option value="agent">Agent</option><option value="human">Human</option></select>
-    </div>
-    <div class="form-row">
-      <input id="regSource" placeholder="Source (openclaw / hermes)">
-      <input id="regCaps" placeholder="Capabilities (code-gen, review)">
-    </div>
-    <div class="form-row">
-      <input id="regCallback" placeholder="Callback URL (optional)">
-    </div>
-    <button class="btn btn-primary" onclick="registerAgent()">Register</button>
-    <small id="regResult" style="color:var(--green);display:none;margin-left:8px;"></small>
-  </div>
+<!-- Tab Bar -->
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('board')">&#128202; Task Board</button>
+  <button class="tab-btn" onclick="switchTab('tree')">&#127795; Tree View</button>
+  <button class="tab-btn" onclick="switchTab('alerts')">&#128680; Alerts <span class="badge tab-badge hidden" id="tabAlertBadge"></span></button>
+</div>
 
-  <!-- Create Task -->
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- ==================== TAB 1: Task Board ==================== -->
+<div class="tab-content active" id="tab-board">
   <div class="card">
-    <h2>&#128196; Create Task</h2>
-    <div class="form-row">
-      <input id="taskTitle" placeholder="Task title">
-      <input id="taskParent" placeholder="Parent ID (optional)" type="number" style="max-width:110px">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <h2 style="margin-bottom:0">&#128202; Task Overview</h2>
+      <div class="alert-filters" style="margin-bottom:0">
+        <button class="pill active" onclick="filterBoard('all', this)">All</button>
+        <button class="pill" onclick="filterBoard('open', this)">Open</button>
+        <button class="pill" onclick="filterBoard('in_progress', this)">In Progress</button>
+        <button class="pill" onclick="filterBoard('error', this)">Error</button>
+        <button class="pill" onclick="filterBoard('done', this)">Done</button>
+      </div>
     </div>
-    <div class="form-row">
-      <input id="sub1" placeholder="Subtasks (comma-separated)">
-    </div>
-    <button class="btn btn-success" onclick="createTask()">Create Task</button>
-    <small id="taskResult" style="color:var(--green);display:none;margin-left:8px;"></small>
+  </div>
+  <div class="card">
+    <div id="taskBoard"><div class="empty"><p>Loading tasks...</p></div></div>
   </div>
 </div>
 
-<!-- Task Tree -->
-<div class="card">
-  <h2>&#128202; Task Tree</h2>
-  <div id="taskTree"><div class="empty"><p>No tasks yet.</p><p>Register an agent first, then create a task.</p></div></div>
+<!-- ==================== TAB 2: Tree View ==================== -->
+<div class="tab-content" id="tab-tree">
+  <div class="grid-2">
+    <div class="card">
+      <h2>&#10133; Register Agent</h2>
+      <div class="form-row">
+        <input id="regUser" placeholder="Username">
+        <select id="regRole"><option value="agent">Agent</option><option value="human">Human</option></select>
+      </div>
+      <div class="form-row">
+        <input id="regSource" placeholder="Source (openclaw / hermes)">
+        <input id="regCaps" placeholder="Capabilities (code-gen, review)">
+      </div>
+      <div class="form-row">
+        <input id="regCallback" placeholder="Callback URL (optional)">
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="registerAgent()">Register</button>
+      <small id="regResult" style="color:var(--green);display:none;margin-left:8px;"></small>
+    </div>
+
+    <div class="card">
+      <h2>&#128196; Create Task</h2>
+      <div class="form-row">
+        <input id="taskTitle" placeholder="Task title">
+        <input id="taskParent" placeholder="Parent ID (optional)" type="number" style="max-width:100px">
+      </div>
+      <div class="form-row">
+        <input id="sub1" placeholder="Subtasks (comma-separated)">
+      </div>
+      <button class="btn btn-success btn-sm" onclick="createTask()">Create Task</button>
+      <small id="taskResult" style="color:var(--green);display:none;margin-left:8px;"></small>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>&#127795; Task Tree <span style="font-size:0.7rem;color:var(--muted);margin-left:8px">right-click a task row for actions</span></h2>
+    <div id="taskTree"><div class="empty"><p>No tasks yet.</p><p>Register an agent first, then create a task.</p></div></div>
+  </div>
+
+  <div class="card">
+    <h2>&#129302; Registered Agents</h2>
+    <div id="agentList"><div class="empty">No agents found.</div></div>
+  </div>
 </div>
 
-<!-- Agents -->
-<div class="card">
-  <h2>&#129302; Registered Agents</h2>
-  <div id="agentList"><div class="empty">No agents found.</div></div>
+<!-- ==================== TAB 3: Alert Center ==================== -->
+<div class="tab-content" id="tab-alerts">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <h2 style="margin-bottom:0">&#128680; Alert Center</h2>
+      <div class="alert-filters" style="margin-bottom:0">
+        <button class="pill active" onclick="filterAlerts('all', this)">All</button>
+        <button class="pill" onclick="filterAlerts('open', this)">Open</button>
+        <button class="pill" onclick="filterAlerts('acknowledged', this)">Acknowledged</button>
+        <button class="pill" onclick="filterAlerts('resolved', this)">Resolved</button>
+      </div>
+    </div>
+  </div>
+  <div id="alertList"><div class="empty"><p>No alerts.</p><p>When agents report errors, alerts will appear here.</p></div></div>
 </div>
 
-</div>
+</div><!-- /container -->
+
+<!-- Context menu -->
+<div class="ctx-menu" id="ctxMenu"></div>
 
 <!-- Assign Modal -->
 <div class="modal-overlay" id="assignModal">
@@ -177,6 +295,13 @@
 <script>
 const API = '';
 let pollTimer = null;
+let currentTab = 'board';
+let alertCount = 0;
+let prevAlertCount = 0;
+let boardFilter = 'all';
+let alertFilter = 'all';
+let allTasks = [];
+let allAlerts = [];
 
 // --- Token ---
 function getToken() { return document.getElementById('tokenInput').value || localStorage.getItem('api_token') || ''; }
@@ -196,7 +321,7 @@ function toggleAuto() {
   if (document.getElementById('autoRefresh').checked) startPoll();
   else stopPoll();
 }
-function startPoll() { stopPoll(); pollTimer = setInterval(refreshAll, 5000); }
+function startPoll() { stopPoll(); pollTimer = setInterval(refreshCurrentTab, 5000); }
 function stopPoll() { if (pollTimer) clearInterval(pollTimer); }
 
 // --- API helpers ---
@@ -208,6 +333,63 @@ async function api(method, path, body) {
   const r = await fetch(API + path, opts);
   const data = await r.json().catch(() => ({}));
   return { status: r.status, data };
+}
+
+// --- Tab switching ---
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', i === ['board','tree','alerts'].indexOf(tab)));
+  document.getElementById('tab-board').classList.toggle('active', tab === 'board');
+  document.getElementById('tab-tree').classList.toggle('active', tab === 'tree');
+  document.getElementById('tab-alerts').classList.toggle('active', tab === 'alerts');
+  refreshCurrentTab();
+}
+
+async function refreshCurrentTab() {
+  await Promise.all([fetchAlertCount(), loadAlerts()]);
+  if (currentTab === 'board') await loadTaskBoard();
+  else if (currentTab === 'tree') await loadAll();
+  document.getElementById('refreshInfo').textContent = 'auto-refresh: 5s | last: ' + new Date().toLocaleTimeString();
+}
+
+async function refreshAll() {
+  await Promise.all([fetchAlertCount(), loadTaskBoard(), loadAll(), loadAlerts()]);
+  document.getElementById('refreshInfo').textContent = 'auto-refresh: 5s | last: ' + new Date().toLocaleTimeString();
+}
+
+// --- Alert count badge ---
+async function fetchAlertCount() {
+  const { status, data } = await api('GET', '/api/alerts?status=open&limit=1');
+  if (status !== 200) return;
+  prevAlertCount = alertCount;
+  alertCount = data.total || 0;
+  updateBadge();
+}
+
+function updateBadge() {
+  const badge = document.getElementById('alertCountBadge');
+  const tabBadge = document.getElementById('tabAlertBadge');
+  if (alertCount > 0) {
+    badge.textContent = alertCount;
+    badge.classList.remove('hidden');
+    tabBadge.textContent = alertCount;
+    tabBadge.classList.remove('hidden');
+    if (alertCount > prevAlertCount) {
+      badge.classList.add('pulse');
+      setTimeout(() => badge.classList.remove('pulse'), 500);
+      showToast(alertCount - prevAlertCount + ' new alert(s)');
+    }
+  } else {
+    badge.classList.add('hidden');
+    tabBadge.classList.add('hidden');
+  }
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
 }
 
 // --- Me ---
@@ -274,23 +456,88 @@ async function createTask() {
   }
 }
 
-// --- Render ---
-async function refreshAll() {
-  document.getElementById('refreshInfo').textContent = 'refreshing...';
+// ===================================================================
+// TAB 1: Task Board
+// ===================================================================
+function filterBoard(f, el) {
+  boardFilter = f;
+  document.querySelectorAll('#tab-board .pill').forEach(p => p.classList.remove('active'));
+  if (el) el.classList.add('active');
+  renderTaskBoard();
+}
+
+async function loadTaskBoard() {
+  const { status, data } = await api('GET', '/api/tasks?sort=id&order=asc&limit=100');
+  if (status !== 200) { document.getElementById('taskBoard').innerHTML = '<div class="empty">Auth required</div>'; return; }
+  allTasks = data.tasks || [];
+  renderTaskBoard();
+}
+
+function renderTaskBoard() {
+  const tasks = allTasks;
+  const roots = tasks.filter(t => !t.parent_id);
+  const filtered = boardFilter === 'all' ? roots : roots.filter(t => t.status === boardFilter);
+
+  if (!filtered.length) {
+    document.getElementById('taskBoard').innerHTML = '<div class="empty"><p>No tasks match the filter.</p></div>';
+    return;
+  }
+
+  const childrenMap = {};
+  for (const t of tasks) {
+    if (t.parent_id) (childrenMap[t.parent_id] ||= []).push(t);
+  }
+
+  let html = '<table class="board-table"><thead><tr>';
+  html += '<th>ID</th><th>Title</th><th>Status</th><th>Children</th><th>Assigned</th><th>Alerts</th><th>Actions</th>';
+  html += '</tr></thead><tbody>';
+
+  for (const t of filtered) {
+    const kids = childrenMap[t.id] || [];
+    const doneCount = kids.filter(k => k.status === 'done').length;
+    const errorCount = kids.filter(k => k.status === 'error').length;
+    const taskAlerts = allAlerts.filter(a => a.task_id === t.id && a.status === 'open').length;
+    const totalAlerts = taskAlerts + kids.reduce((sum, k) => sum + allAlerts.filter(a => a.task_id === k.id && a.status === 'open').length, 0);
+
+    html += `<tr>
+      <td>#${t.id}</td>
+      <td><span class="clickable" onclick="switchTab('tree');setTimeout(()=>scrollToTask(${t.id}),100)">${esc(t.title)}</span></td>
+      <td><span class="status status-${t.status}">${t.status}</span></td>
+      <td>
+        ${kids.length ? `<span class="progress-wrap">
+          <span class="progress-bar"><span class="progress-fill" style="width:${doneCount/kids.length*100}%"></span></span>
+          <span class="progress-text">${doneCount}/${kids.length}</span>
+        </span>` : '<span style="color:var(--muted);font-size:0.75rem">—</span>'}
+        ${errorCount > 0 ? ` <span style="color:var(--red);font-size:0.7rem">${errorCount} error</span>` : ''}
+      </td>
+      <td style="font-size:0.75rem;color:var(--muted)">${t.assigned_to ? 'Agent #'+t.assigned_to : '—'}</td>
+      <td>${totalAlerts > 0 ? `<span class="badge" style="cursor:pointer" onclick="switchTab('alerts')">${totalAlerts}</span>` : '<span style="color:var(--muted)">—</span>'}</td>
+      <td><div class="task-actions">
+        <button class="btn btn-sm btn-primary" onclick="openAssign(${t.id},'${esc(t.title)}')" title="Assign">&#10148;</button>
+      </div></td>
+    </tr>`;
+  }
+
+  html += '</tbody></table>';
+  document.getElementById('taskBoard').innerHTML = html;
+}
+
+// ===================================================================
+// TAB 2: Tree View
+// ===================================================================
+async function loadAll() {
   await Promise.all([loadTasks(), loadAgents()]);
-  document.getElementById('refreshInfo').textContent = 'auto-refresh: 5s | last: ' + new Date().toLocaleTimeString();
 }
 
 async function loadTasks() {
-  const { status, data } = await api('GET', '/api/tasks?sort=id&order=asc');
+  const { status, data } = await api('GET', '/api/tasks?sort=id&order=asc&limit=100');
   if (status !== 200) { document.getElementById('taskTree').innerHTML = '<div class="empty">Auth required — set token above</div>'; return; }
-  const tasks = data.tasks || [];
-  if (!tasks.length) { document.getElementById('taskTree').innerHTML = '<div class="empty"><p>No tasks yet.</p><p>Create one using the form above.</p></div>'; return; }
+  allTasks = data.tasks || [];
+  if (!allTasks.length) { document.getElementById('taskTree').innerHTML = '<div class="empty"><p>No tasks yet.</p><p>Create one using the form above.</p></div>'; return; }
 
-  // Build tree
   const childrenMap = {};
   const roots = [];
-  for (const t of tasks) {
+  for (const t of allTasks) {
     if (t.parent_id) { (childrenMap[t.parent_id] ||= []).push(t); }
     else { roots.push(t); }
   }
@@ -301,11 +548,14 @@ async function loadTasks() {
     const kids = childrenMap[t.id] || [];
     const doneCount = kids.filter(k => k.status === 'done').length;
     const hasKids = kids.length > 0;
+    const alertN = allAlerts.filter(a => a.task_id === t.id && a.status === 'open').length;
 
-    html += `<li class="${cls}">
-      <div class="task-row">
+    html += `<li class="${cls}" id="task-${t.id}">
+      <div class="task-row" oncontextmenu="showCtxMenu(event, ${t.id}, '${esc(t.title)}', '${t.status}')">
+        ${hasKids ? `<span class="toggle-icon" onclick="toggleCollapse(event, ${t.id})">&#9660;</span>` : '<span style="width:16px;flex-shrink:0"></span>'}
         <span class="task-title">${esc(t.title)}</span>
         <span class="status status-${t.status}">${t.status}</span>
+        ${alertN > 0 ? `<span class="alert-indicator" title="${alertN} alert(s)" onclick="switchTab('alerts')">&#128680;${alertN}</span>` : ''}
         ${t.assigned_to ? `<span style="font-size:0.7rem;color:var(--muted)">agent #${t.assigned_to}</span>` : ''}
         ${hasKids ? `
           <span class="progress-wrap">
@@ -317,12 +567,31 @@ async function loadTasks() {
           <button class="btn btn-sm btn-primary" onclick="openAssign(${t.id}, '${esc(t.title)}')" title="Assign">&#10148;</button>
         </span>
       </div>`;
-    for (const kid of kids) render(kid, depth + 1);
+    if (hasKids) {
+      html += `<ul class="task-list" id="children-${t.id}">`;
+      for (const kid of kids) render(kid, depth + 1);
+      html += '</ul>';
+    }
     html += '</li>';
   }
   for (const r of roots) render(r, 0);
   html += '</ul>';
   document.getElementById('taskTree').innerHTML = html;
+}
+
+function toggleCollapse(e, taskId) {
+  e.stopPropagation();
+  const icon = e.target;
+  const list = document.getElementById('children-' + taskId);
+  if (!list) return;
+  const collapsed = list.style.display === 'none';
+  list.style.display = collapsed ? '' : 'none';
+  icon.classList.toggle('collapsed', !collapsed);
+}
+
+function scrollToTask(id) {
+  const el = document.getElementById('task-' + id);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 async function loadAgents() {
@@ -344,11 +613,141 @@ async function loadAgents() {
   document.getElementById('agentList').innerHTML = html;
 }
 
-// --- Assign ---
+// ===================================================================
+// TAB 3: Alert Center
+// ===================================================================
+function filterAlerts(f, el) {
+  alertFilter = f;
+  document.querySelectorAll('#tab-alerts .pill').forEach(p => p.classList.remove('active'));
+  if (el) el.classList.add('active');
+  renderAlerts();
+}
+
+async function loadAlerts() {
+  const { status, data } = await api('GET', '/api/alerts?limit=100');
+  if (status !== 200) { document.getElementById('alertList').innerHTML = '<div class="empty">Auth required</div>'; return; }
+  allAlerts = data.alerts || [];
+  renderAlerts();
+}
+
+function renderAlerts() {
+  const filtered = alertFilter === 'all' ? allAlerts : allAlerts.filter(a => a.status === alertFilter);
+
+  if (!filtered.length) {
+    document.getElementById('alertList').innerHTML = '<div class="empty"><p>No alerts match the filter.</p></div>';
+    return;
+  }
+
+  let html = '';
+  for (const a of filtered) {
+    html += `<div class="alert-card ${a.severity} ${a.status === 'resolved' ? 'resolved' : ''}">
+      <div class="alert-header">
+        <div>
+          <span class="alert-title">${severityIcon(a.severity)} ${esc(a.error_type)}</span>
+          <span class="status" style="margin-left:8px;background:${a.status==='open'?'#450a0a':a.status==='acknowledged'?'#3b2f0a':'#14532d'};color:${a.status==='open'?'#f87171':a.status==='acknowledged'?'#fbbf24':'#4ade80'}">${a.status}</span>
+        </div>
+        <span class="alert-meta">${a.created_at || ''}</span>
+      </div>
+      <div class="alert-meta" style="margin-top:4px">
+        Task: <span class="clickable" onclick="switchTab('tree');setTimeout(()=>scrollToTask(${a.task_id}),100)">#${a.task_id} ${esc(a.task_title || '')}</span>
+        ${a.agent_name ? ` | Agent: ${esc(a.agent_name)}` : ''}
+      </div>
+      <div style="font-size:0.85rem;margin-top:4px">${esc(a.error_message || '')}</div>
+      ${a.fix_task_id ? `<div style="font-size:0.75rem;color:var(--green);margin-top:4px">Fix task: #${a.fix_task_id}</div>` : ''}
+      <div class="alert-actions">
+        ${a.status === 'open' ? `<button class="btn btn-sm btn-primary" onclick="acknowledgeAlert(${a.id})">Acknowledge</button>` : ''}
+        ${a.status !== 'resolved' ? `<button class="btn btn-sm btn-success" onclick="resolveAlert(${a.id})">Resolve</button>` : ''}
+        ${!a.fix_task_id ? `<button class="btn btn-sm btn-primary" onclick="createFixTask(${a.id}, ${a.task_id})">Create Fix Task</button>` : ''}
+      </div>
+    </div>`;
+  }
+  document.getElementById('alertList').innerHTML = html;
+}
+
+function severityIcon(s) {
+  if (s === 'critical') return '&#128308;';
+  if (s === 'error') return '&#128992;';
+  return '&#128993;';
+}
+
+async function acknowledgeAlert(id) {
+  await api('PATCH', `/api/alerts/${id}`, { status: 'acknowledged' });
+  await loadAlerts();
+  await fetchAlertCount();
+}
+
+async function resolveAlert(id) {
+  await api('PATCH', `/api/alerts/${id}`, { status: 'resolved' });
+  await loadAlerts();
+  await fetchAlertCount();
+}
+
+async function createFixTask(alertId, taskId) {
+  const title = prompt('Fix task title (optional):', '[Fix] Alert #' + alertId);
+  if (title === null) return;
+  const body = { title: title || '[Fix] Alert #' + alertId, parent_id: taskId };
+  const { data } = await api('POST', '/api/tasks', body);
+  if (data.id) {
+    const alert = allAlerts.find(a => a.id === alertId);
+    if (alert && alert.agent_id) {
+      await api('POST', `/api/tasks/${data.id}/assign`, { assigned_to: alert.agent_id });
+    }
+    await api('PATCH', `/api/alerts/${alertId}`, { status: 'acknowledged', fix_task_id: data.id });
+    await refreshAll();
+  }
+}
+
+// ===================================================================
+// Context menu
+// ===================================================================
+function showCtxMenu(e, taskId, title, status) {
+  e.preventDefault();
+  const menu = document.getElementById('ctxMenu');
+  menu.innerHTML = `
+    <button class="ctx-menu-item" onclick="openAssign(${taskId},'${esc(title)}');hideCtxMenu()">&#10148; Assign Agent</button>
+    <button class="ctx-menu-item" onclick="switchTab('tree');hideCtxMenu()">&#128065; View in Tree</button>
+    <div class="ctx-menu-divider"></div>
+    <button class="ctx-menu-item" onclick="viewTaskAlerts(${taskId});hideCtxMenu()">&#128680; View Alerts</button>
+    <button class="ctx-menu-item" onclick="createSubtaskInline(${taskId});hideCtxMenu()">&#128196; Create Subtask</button>
+    ${status === 'error' ? `<button class="ctx-menu-item" onclick="createFixFromCtx(${taskId});hideCtxMenu()">&#128295; Create Fix Task</button>` : ''}
+  `;
+  menu.style.left = Math.min(e.clientX, window.innerWidth - 200) + 'px';
+  menu.style.top = Math.min(e.clientY, window.innerHeight - 200) + 'px';
+  menu.classList.add('active');
+}
+
+function hideCtxMenu() {
+  document.getElementById('ctxMenu').classList.remove('active');
+}
+
+document.addEventListener('click', hideCtxMenu);
+
+function viewTaskAlerts(taskId) {
+  switchTab('alerts');
+}
+
+function createSubtaskInline(taskId) {
+  const title = prompt('Subtask title:');
+  if (!title) return;
+  api('POST', '/api/tasks/' + taskId + '/subtasks', { subtasks: [{ title }] }).then(() => refreshAll());
+}
+
+function createFixFromCtx(taskId) {
+  const title = prompt('Fix task title:', '[Fix] Task #' + taskId);
+  if (!title) return;
+  api('POST', '/api/tasks', { title, parent_id: taskId }).then(r => {
+    if (r.data.id) {
+      api('POST', `/api/tasks/${r.data.id}/assign`, { assigned_to: allTasks.find(t => t.id === taskId)?.assigned_to }).then(() => refreshAll());
+    }
+  });
+}
+
+// ===================================================================
+// Assign
+// ===================================================================
 async function openAssign(taskId, title) {
   document.getElementById('assignTaskId').textContent = taskId;
   document.getElementById('assignTaskTitle').textContent = title;
-  // Populate agent dropdown
   const { data } = await api('GET', '/api/agents');
   const sel = document.getElementById('assignAgentSelect');
   sel.innerHTML = '';
@@ -360,6 +759,7 @@ async function openAssign(taskId, title) {
   }
   document.getElementById('assignModal').classList.add('active');
 }
+
 async function doAssign() {
   const taskId = document.getElementById('assignTaskId').textContent;
   const agentId = Number(document.getElementById('assignAgentSelect').value);
@@ -368,13 +768,16 @@ async function doAssign() {
   closeModal('assignModal');
   refreshAll();
 }
+
 function closeModal(id) { document.getElementById(id).classList.remove('active'); }
 
-function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
 // Init
 startPoll();
-refreshAll();
+fetchAlertCount();
+loadTaskBoard();
+loadAll();
 </script>
 </body>
 </html>
