@@ -630,4 +630,33 @@ describe('Task model', () => {
       expect(() => task._notifyParent(99999)).not.toThrow();
     });
   });
+
+  describe('setError', () => {
+    it('transitions task status to error', () => {
+      const taskId = db.prepare("INSERT INTO tasks (user_id, title, status) VALUES (?, 'test', 'in_progress')").run(userId).lastInsertRowid;
+      task.setError(taskId);
+      const t = task.findById(taskId);
+      expect(t.status).toBe('error');
+    });
+  });
+
+  describe('abort', () => {
+    it('transitions task from error to aborted', () => {
+      const taskId = db.prepare("INSERT INTO tasks (user_id, title, status) VALUES (?, 'test', 'error')").run(userId).lastInsertRowid;
+      task.abort(taskId);
+      const t = task.findById(taskId);
+      expect(t.status).toBe('aborted');
+    });
+
+    it('rejects abort from non-error status', () => {
+      const taskId = db.prepare("INSERT INTO tasks (user_id, title, status) VALUES (?, 'test', 'open')").run(userId).lastInsertRowid;
+      const r = task.abort(taskId);
+      expect(r.error).toBeDefined();
+    });
+
+    it('rejects abort for non-existent task', () => {
+      const r = task.abort(999);
+      expect(r.error).toBeDefined();
+    });
+  });
 });

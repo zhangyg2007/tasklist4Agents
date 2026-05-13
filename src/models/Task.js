@@ -109,6 +109,21 @@ export class Task {
     return this.update(id, { status: 'assigned', assigned_to: assignedTo });
   }
 
+  setError(id) {
+    const task = this.findById(id);
+    if (!task) return { error: 'Task not found' };
+    return this.update(id, { status: 'error' });
+  }
+
+  abort(id) {
+    const task = this.findById(id);
+    if (!task) return { error: 'Task not found' };
+    if (task.status !== 'error') {
+      return { error: 'Can only abort tasks with status: error' };
+    }
+    return this.update(id, { status: 'aborted' });
+  }
+
   start(id) {
     const task = this.findById(id);
     if (task && task.status === 'assigned') {
