@@ -473,6 +473,56 @@ describe('API Integration', () => {
       expect(res.body.alerts[0].error_type).toBe('TIMEOUT');
     });
 
+    // --- List: pagination & more filters ---
+
+    it('GET /api/alerts — paginates results', async () => {
+      db.prepare("UPDATE tasks SET status = 'in_progress', assigned_to = ? WHERE id = ?").run(agentId, taskId);
+      db.prepare("INSERT INTO alerts (task_id, agent_id, error_type, severity) VALUES (?,?,?,?)").run(taskId, agentId, 'A', 'error');
+      db.prepare("INSERT INTO alerts (task_id, agent_id, error_type, severity) VALUES (?,?,?,?)").run(taskId, agentId, 'B', 'warn');
+      db.prepare("INSERT INTO alerts (task_id, agent_id, error_type, severity) VALUES (?,?,?,?)").run(taskId, agentId, 'C', 'critical');
+
+      const res = await request(app)
+        .get('/api/alerts?page=1&limit=2')
+        .set(auth(humanToken));
+
+      expect(res.status).toBe(200);
+      expect(res.body.alerts.length).toBe(2);
+      expect(res.body.total).toBe(3);
+      expect(res.body.page).toBe(1);
+      expect(res.body.limit).toBe(2);
+    });
+
+    it('GET /api/alerts — filters by severity', async () => {
+      db.prepare("UPDATE tasks SET status = 'in_progress', assigned_to = ? WHERE id = ?").run(agentId, taskId);
+      db.prepare("INSERT INTO alerts (task_id, agent_id, error_type, severity) VALUES (?,?,?,?)").run(taskId, agentId, 'E1', 'warn');
+      db.prepare("INSERT INTO alerts (task_id, agent_id, error_type, severity) VALUES (?,?,?,?)").run(taskId, agentId, 'E2', 'critical');
+      db.prepare("INSERT INTO alerts (task_id, agent_id, error_type, severity) VALUES (?,?,?,?)").run(taskId, agentId, 'E3', 'critical');
+
+      const res = await request(app)
+        .get('/api/alerts?severity=critical')
+        .set(auth(humanToken));
+
+      expect(res.status).toBe(200);
+      expect(res.body.alerts.length).toBe(2);
+      expect(res.body.alerts.every(a => a.severity === 'critical')).toBe(true);
+    });
+
+    it('GET /api/alerts — filters by task_id', async () => {
+      const task2Id = db.prepare("INSERT INTO tasks (title, user_id) VALUES (?, ?)").run('Task2', humanId).lastInsertRowid;
+      db.prepare("UPDATE tasks SET status = 'in_progress', assigned_to = ? WHERE id = ?").run(agentId, taskId);
+      db.prepare("UPDATE tasks SET status = 'in_progress', assigned_to = ? WHERE id = ?").run(agentId, task2Id);
+      db.prepare("INSERT INTO alerts (task_id, agent_id, error_type, severity) VALUES (?,?,?,?)").run(taskId, agentId, 'T1', 'error');
+      db.prepare("INSERT INTO alerts (task_id, agent_id, error_type, severity) VALUES (?,?,?,?)").run(task2Id, agentId, 'T2', 'warn');
+
+      const res = await request(app)
+        .get(`/api/alerts?task_id=${taskId}`)
+        .set(auth(humanToken));
+
+      expect(res.status).toBe(200);
+      expect(res.body.alerts.length).toBe(1);
+      expect(res.body.alerts[0].error_type).toBe('T1');
+    });
+
     // --- Get Single Alert ---
 
     it('GET /api/alerts/:id — returns single alert', async () => {
@@ -491,6 +541,24 @@ describe('API Integration', () => {
       expect(res.body.severity).toBe('critical');
       expect(res.body.task_title).toBe('Alertable');
       expect(res.body.agent_name).toBe('agent');
+    });
+
+    it('GET /api/alerts/:id — returns 404 for non-existent alert', async () => {
+      const res = await request(app)
+        .get('/api/alerts/99999')
+        .set(auth(humanToken));
+
+      expect(res.status).toBe(404);
+      expect(res.body.error).toBe('Alert not found');
+    });
+
+    it('GET /api/alerts/:id — returns 400 for invalid id', async () => {
+      const res = await request(app)
+        .get('/api/alerts/abc')
+        .set(auth(humanToken));
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toBe('Invalid alert id');
     });
 
     // --- Update Alert ---
@@ -512,6 +580,39 @@ describe('API Integration', () => {
       // Verify persisted
       const alert = db.prepare('SELECT status FROM alerts WHERE id = ?').get(alertId);
       expect(alert.status).toBe('acknowledged');
+    });
+
+    it('PATCH /api/alerts/:id — returns 400 for invalid status', async () => {
+      db.prepare("UPDATE tasks SET status = 'in_progress', assigned_to = ? WHERE id = ?").run(agentId, taskId);
+      const alertId = db.prepare(
+        "INSERT INTO alerts (task_id, agent_id, error_type, severity) VALUES (?,?,?,?)"
+      ).run(taskId, agentId, 'TEST', 'warn').lastInsertRowid;
+
+      const res = await request(app)
+        .patch(`/api/alerts/${alertId}`)
+        .set(auth(humanToken))
+        .send({ status: 'deleted' });
+
+      expect(res.status).toBe(400);
+    });
+
+    it('PATCH /api/alerts/:id — returns 404 for non-existent alert', async () => {
+      const res = await request(app)
+        .patch('/api/alerts/99999')
+        .set(auth(humanToken))
+        .send({ status: 'acknowledged' });
+
+      expect(res.status).toBe(404);
+      expect(res.body.error).toBe('Alert not found');
+    });
+
+    it('PATCH /api/alerts/:id — returns 400 for invalid id', async () => {
+      const res = await request(app)
+        .patch('/api/alerts/0')
+        .set(auth(humanToken))
+        .send({ status: 'acknowledged' });
+
+      expect(res.status).toBe(400);
     });
   });
 });
