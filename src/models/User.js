@@ -38,6 +38,27 @@ export class User {
     return this.db.prepare(sql).all(...params);
   }
 
+  matchByCapabilities(keywords, excludeAgentId) {
+    const caps = typeof keywords === 'string'
+      ? keywords.split(',').map(c => c.trim()).filter(Boolean)
+      : (keywords || []);
+
+    if (caps.length === 0) return [];
+
+    let sql = "SELECT id, username, role, source, capabilities FROM users WHERE role = 'agent' AND (";
+    const params = [];
+    const conditions = caps.map(() => 'capabilities LIKE ?');
+    sql += conditions.join(' OR ') + ')';
+    caps.forEach(c => params.push(`%${c}%`));
+
+    if (excludeAgentId) {
+      sql += ' AND id != ?';
+      params.push(excludeAgentId);
+    }
+
+    return this.db.prepare(sql).all(...params);
+  }
+
   register({ username, role, source, capabilities, callback_url }) {
     const finalRole = role || 'human';
     if (!['human', 'agent'].includes(finalRole)) {

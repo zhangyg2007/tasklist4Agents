@@ -226,4 +226,47 @@ describe('User model', () => {
       expect(typeof agents[0].capabilities).toBe('string');
     });
   });
+
+  // ========== matchByCapabilities ==========
+
+  describe('matchByCapabilities()', () => {
+    test('returns agents matching a capability keyword', () => {
+      db.prepare("DELETE FROM users");
+      db.prepare("INSERT INTO users (username, token, role, capabilities) VALUES ('a1', 't1', 'agent', ?)").run('["code-gen","debug"]');
+      db.prepare("INSERT INTO users (username, token, role, capabilities) VALUES ('a2', 't2', 'agent', ?)").run('["review","deploy"]');
+      db.prepare("INSERT INTO users (username, token, role, capabilities) VALUES ('a3', 't3', 'agent', ?)").run('["code-gen","review"]');
+      db.prepare("INSERT INTO users (username, token, role, capabilities) VALUES ('h1', 't4', 'human', ?)").run('["code-gen"]');
+
+      const agents = user.matchByCapabilities('code-gen');
+      expect(agents).toHaveLength(2);
+      expect(agents.map(a => a.username).sort()).toEqual(['a1', 'a3']);
+    });
+
+    test('matches multiple capability keywords (OR logic)', () => {
+      db.prepare("DELETE FROM users");
+      db.prepare("INSERT INTO users (username, token, role, capabilities) VALUES ('a1', 't1', 'agent', '[\"code-gen\"]')").run();
+      db.prepare("INSERT INTO users (username, token, role, capabilities) VALUES ('a2', 't2', 'agent', '[\"review\"]')").run();
+
+      const agents = user.matchByCapabilities('code-gen, review');
+      expect(agents).toHaveLength(2);
+    });
+
+    test('returns empty array when no match', () => {
+      db.prepare("DELETE FROM users");
+      db.prepare("INSERT INTO users (username, token, role, capabilities) VALUES ('a1', 't1', 'agent', '[\"debug\"]')").run();
+
+      const agents = user.matchByCapabilities('quantum');
+      expect(agents).toHaveLength(0);
+    });
+
+    test('excludes a specific agent by id', () => {
+      db.prepare("DELETE FROM users");
+      db.prepare("INSERT INTO users (username, token, role, capabilities) VALUES ('a1', 't1', 'agent', '[\"code-gen\"]')").run();
+      const a2Id = db.prepare("INSERT INTO users (username, token, role, capabilities) VALUES ('a2', 't2', 'agent', '[\"code-gen\"]')").run().lastInsertRowid;
+
+      const agents = user.matchByCapabilities('code-gen', a2Id);
+      expect(agents).toHaveLength(1);
+      expect(agents[0].username).toBe('a1');
+    });
+  });
 });
